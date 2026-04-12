@@ -3,10 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { apiResponse, apiError, NotFoundError } from "@/lib/errors";
 import { generateOutreachEmail } from "@/services/ai/emailGenerator";
 import { requireAuth, auditLog } from "@/lib/api-auth";
+import { getAiLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { RateLimitError } from "@/lib/errors";
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
+
+    const { success } = await checkRateLimit(getAiLimiter(), user.id);
+    if (!success) throw new RateLimitError();
+
     const { professorId, emailType = "COLD_OUTREACH" } = await req.json();
 
     const [professor, dbUser] = await Promise.all([

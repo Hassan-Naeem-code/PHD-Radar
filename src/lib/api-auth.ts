@@ -39,6 +39,19 @@ export async function requireAdmin(): Promise<SessionUser> {
   return user;
 }
 
+export function verifyCsrf(req: Request): void {
+  // For mutating requests (POST/PUT/DELETE), verify the origin matches
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("host");
+
+  if (!origin || !host) return; // Allow server-to-server calls without origin
+
+  const originHost = new URL(origin).host;
+  if (originHost !== host) {
+    throw new UnauthorizedError();
+  }
+}
+
 export async function auditLog(
   userId: string,
   action: string,

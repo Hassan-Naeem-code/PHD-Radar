@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { apiResponse, apiError, paginatedResponse } from "@/lib/errors";
 import { searchSchema } from "@/utils/validation";
 import { requireAuth } from "@/lib/api-auth";
+import { getSearchLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { RateLimitError } from "@/lib/errors";
 import {
   calculateResearchAlignmentScore,
   calculateFundingScore,
@@ -13,6 +15,10 @@ import {
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
+
+    const { success } = await checkRateLimit(getSearchLimiter(), user.id);
+    if (!success) throw new RateLimitError();
+
     const url = new URL(req.url);
     const query = url.searchParams.get("query") || "";
     const page = parseInt(url.searchParams.get("page") || "1");
