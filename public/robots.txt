@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /discover/
+Disallow: /professors/
+Disallow: /outreach/
+Disallow: /applications/
+Disallow: /papers/
+Disallow: /profile/
+Disallow: /settings/
+Disallow: /onboarding/
+
+Sitemap: https://phdradar.com/sitemap.xml

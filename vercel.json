@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/scraping/trigger?source=scholar",
+      "schedule": "0 2 * * 1"
+    },
+    {
+      "path": "/api/scraping/trigger?source=nsf",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/notifications/follow-up-check",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/notifications/deadline-check",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

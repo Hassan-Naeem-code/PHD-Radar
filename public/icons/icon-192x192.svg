@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#4361ee"/>
+  <circle cx="96" cy="96" r="60" fill="none" stroke="white" stroke-width="4" opacity="0.3"/>
+  <circle cx="96" cy="96" r="40" fill="none" stroke="white" stroke-width="4" opacity="0.5"/>
+  <circle cx="96" cy="96" r="20" fill="none" stroke="white" stroke-width="4" opacity="0.7"/>
+  <circle cx="96" cy="96" r="6" fill="white"/>
+  <line x1="96" y1="96" x2="140" y2="60" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <text x="96" y="160" font-family="sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">PhDRadar</text>
+</svg>

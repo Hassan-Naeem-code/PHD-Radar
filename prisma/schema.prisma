@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String?
+  name              String
+  avatar            String?
+  role              UserRole  @default(STUDENT)
+  emailVerified     DateTime?
+
+  currentDegree     String?
+  currentSchool     String?
+  graduationDate    DateTime?
+  gpa               Float?
+  researchInterests String[]
+  industryYears     Int?
+  skills            String[]
+  linkedinUrl       String?
+  githubUrl         String?
+  cvUrl             String?
+  transcriptUrl     String?
+
+  targetTerm        String?
+  targetCountry     String    @default("US")
+  targetCountries   String[]  @default(["US"])
+  fundingRequired   Boolean   @default(true)
+  willingToSelfFund Boolean   @default(false)
+  willingToRelocate Boolean   @default(true)
+  visaStatus        String?
+  citizenCountry    String?
+  onboardingCompleted Boolean @default(false)
+
+  searches          Search[]
+  savedProfessors   SavedProfessor[]
+  outreachEmails    OutreachEmail[]
+  applications      Application[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  accounts          Account[]
+  sessions          Session[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+// NextAuth required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+model Professor {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String?
+  phone               String?
+  title               String?
+  department          String?
+  university          University @relation(fields: [universityId], references: [id])
+  universityId        String
+  personalWebsite     String?
+  googleScholarUrl    String?
+  dblpUrl             String?
+  linkedinUrl         String?
+  githubUrl           String?
+  labName             String?
+  labWebsite          String?
+
+  researchAreas       String[]
+  researchSummary     String?   @db.Text
+  hIndex              Int?
+  citations           Int?
+  recentPaperCount    Int?
+
+  hasActiveFunding    Boolean   @default(false)
+  fundingSources      FundingGrant[]
+  lookingForStudents  Boolean   @default(false)
+  lookingForStudentsSource String?
+
+  currentPhDStudents  Int?
+  graduatedPhDStudents Int?
+  internationalStudents Boolean?
+
+  fundingScore        Float?
+  responsivenessScore Float?
+
+  lastScrapedAt       DateTime?
+  dataQuality         DataQuality @default(LOW)
+
+  publications        Publication[]
+  savedBy             SavedProfessor[]
+  outreachEmails      OutreachEmail[]
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([universityId])
+  @@index([hasActiveFunding])
+}
+
+enum DataQuality {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model University {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  shortName       String?
+  location        String?
+  state           String?
+  country         String    @default("US")
+  csRanking       Int?
+  usNewsRanking   Int?
+  website         String?
+  gradAdmissionsUrl String?
+  applicationDeadline DateTime?
+  greRequired     Boolean?
+  toeflMinimum    Int?
+  region          String?
+  phdStructure    PhDStructure @default(US_STYLE)
+  typicalDuration Int?
+  fundingModel    String?
+  academicCalendar String?
+
+  professors      Professor[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum PhDStructure {
+  US_STYLE
+  UK_STYLE
+  EUROPEAN_STYLE
+  AUSTRALIAN_STYLE
+}
+
+model Publication {
+  id              String    @id @default(cuid())
+  title           String
+  authors         String[]
+  venue           String?
+  year            Int
+  abstract        String?   @db.Text
+  url             String?
+  pdfUrl          String?
+  citationCount   Int       @default(0)
+  semanticScholarId String?
+
+  summary         String?   @db.Text
+  keyFindings     String[]
+  futureWork      String[]
+
+  embeddingId     String?
+
+  professor       Professor @relation(fields: [professorId], references: [id])
+  professorId     String
+
+  createdAt       DateTime  @default(now())
+
+  @@index([professorId])
+  @@index([year])
+}
+
+model FundingGrant {
+  id              String    @id @default(cuid())
+  title           String
+  agency          String
+  awardNumber     String?
+  amount          Float?
+  startDate       DateTime?
+  endDate         DateTime?
+  status          String?
+  sourceUrl       String?
+
+  professor       Professor @relation(fields: [professorId], references: [id])
+  professorId     String
+
+  createdAt       DateTime  @default(now())
+
+  @@index([professorId])
+  @@index([status])
+}
+
+model Search {
+  id              String    @id @default(cuid())
+  query           String
+  filters         Json?
+  resultCount     Int       @default(0)
+
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model SavedProfessor {
+  id              String    @id @default(cuid())
+  notes           String?   @db.Text
+  status          OutreachStatus @default(NOT_CONTACTED)
+  priority        Priority  @default(MEDIUM)
+  researchFitScore Float?
+  researchFitNotes String?  @db.Text
+
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  professor       Professor @relation(fields: [professorId], references: [id])
+  professorId     String
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, professorId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum OutreachStatus {
+  NOT_CONTACTED
+  EMAIL_DRAFTED
+  EMAIL_SENT
+  FOLLOW_UP_SENT
+  RESPONDED_POSITIVE
+  RESPONDED_NEUTRAL
+  RESPONDED_NEGATIVE
+  MEETING_SCHEDULED
+  MEETING_COMPLETED
+  RELATIONSHIP_ACTIVE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  TOP
+}
+
+model OutreachEmail {
+  id              String    @id @default(cuid())
+  subject         String
+  body            String    @db.Text
+  type            EmailType
+  sentAt          DateTime?
+  responseReceived Boolean  @default(false)
+  responseDate    DateTime?
+  responseSummary String?   @db.Text
+
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+  professor       Professor @relation(fields: [professorId], references: [id])
+  professorId     String
+
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([professorId])
+}
+
+enum EmailType {
+  COLD_OUTREACH
+  FOLLOW_UP
+  THANK_YOU
+  MEETING_REQUEST
+  APPLICATION_NOTICE
+}
+
+model Application {
+  id              String    @id @default(cuid())
+  universityName  String
+  program         String
+  term            String
+  status          ApplicationStatus @default(IN_PROGRESS)
+  deadline        DateTime?
+  submittedAt     DateTime?
+  decisionDate    DateTime?
+  fundingOffered  Boolean?
+  fundingAmount   Float?
+  notes           String?   @db.Text
+  portalUrl       String?
+
+  sopUploaded     Boolean   @default(false)
+  cvUploaded      Boolean   @default(false)
+  transcriptsUploaded Boolean @default(false)
+  recsRequested   Int       @default(0)
+  recsReceived    Int       @default(0)
+  toeflSent       Boolean   @default(false)
+
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum ApplicationStatus {
+  RESEARCHING
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  ADMITTED_FUNDED
+  ADMITTED_UNFUNDED
+  WAITLISTED
+  REJECTED
+  WITHDRAWN
+  ACCEPTED_OFFER
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  action      String
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model ScrapingJob {
+  id          String    @id @default(cuid())
+  source      String
+  status      JobStatus @default(PENDING)
+  targetUrl   String?
+  resultCount Int       @default(0)
+  errorMessage String?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+  @@index([source])
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  actionUrl String?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
