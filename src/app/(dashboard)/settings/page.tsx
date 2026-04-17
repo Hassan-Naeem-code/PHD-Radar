@@ -13,15 +13,10 @@ import {
 } from "lucide-react";
 import { TwoFactorCard } from "@/components/dashboard/TwoFactorCard";
 
-const PREF_KEYS = {
-  followUp: "pref_follow_up",
-  deadline: "pref_deadline",
-  digest: "pref_digest",
-} as const;
-
-function readPref(key: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  return localStorage.getItem(key) ?? fallback;
+interface EmailPrefs {
+  emailReminders: boolean;
+  emailAlerts: boolean;
+  emailDigest: boolean;
 }
 
 interface ProfileSummary {
@@ -39,27 +34,40 @@ export default function SettingsPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [followUp, setFollowUp] = useState(() => readPref(PREF_KEYS.followUp, "email"));
-  const [deadline, setDeadline] = useState(() => readPref(PREF_KEYS.deadline, "both"));
-  const [digest, setDigest] = useState(() => readPref(PREF_KEYS.digest, "email"));
+  const [emailPrefs, setEmailPrefs] = useState<EmailPrefs>({
+    emailReminders: true,
+    emailAlerts: true,
+    emailDigest: true,
+  });
 
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/profile");
-      const json = await res.json();
-      if (json.success && json.data) {
+      const [profileRes, prefsRes] = await Promise.all([
+        fetch("/api/profile"),
+        fetch("/api/account/email-preferences"),
+      ]);
+      const profileJson = await profileRes.json();
+      if (profileJson.success && profileJson.data) {
         setProfile({
-          plan: json.data.plan,
-          planExpiresAt: json.data.planExpiresAt,
-          email: json.data.email,
+          plan: profileJson.data.plan,
+          planExpiresAt: profileJson.data.planExpiresAt,
+          email: profileJson.data.email,
         });
+      }
+      const prefsJson = await prefsRes.json();
+      if (prefsJson.success && prefsJson.data) {
+        setEmailPrefs(prefsJson.data);
       }
     })();
   }, []);
 
-  function updatePref(key: string, value: string, setter: (v: string) => void) {
-    setter(value);
-    localStorage.setItem(key, value);
+  async function updateEmailPref(field: keyof EmailPrefs, value: boolean) {
+    setEmailPrefs((prev) => ({ ...prev, [field]: value }));
+    await fetch("/api/account/email-preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
   }
 
   async function changePassword() {
@@ -152,29 +160,25 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <PrefRow
+          <ToggleRow
             title="Follow-up Reminders"
             description="Get reminded to follow up after 14 days"
-            value={followUp}
-            onChange={(v) => updatePref(PREF_KEYS.followUp, v, setFollowUp)}
+            checked={emailPrefs.emailReminders}
+            onChange={(v) => updateEmailPref("emailReminders", v)}
           />
           <Separator />
-          <PrefRow
+          <ToggleRow
             title="Deadline Alerts"
             description="7 days, 3 days, and 1 day before deadline"
-            value={deadline}
-            onChange={(v) => updatePref(PREF_KEYS.deadline, v, setDeadline)}
+            checked={emailPrefs.emailAlerts}
+            onChange={(v) => updateEmailPref("emailAlerts", v)}
           />
           <Separator />
-          <PrefRow
-            title="New Professor Matches"
+          <ToggleRow
+            title="Weekly Digest"
             description="Weekly digest of new matching professors"
-            value={digest}
-            onChange={(v) => updatePref(PREF_KEYS.digest, v, setDigest)}
-            options={[
-              { value: "email", label: "Email" },
-              { value: "off", label: "Off" },
-            ]}
+            checked={emailPrefs.emailDigest}
+            onChange={(v) => updateEmailPref("emailDigest", v)}
           />
         </CardContent>
       </Card>
@@ -295,23 +299,16 @@ export default function SettingsPage() {
   );
 }
 
-function PrefRow({
+function ToggleRow({
   title,
   description,
-  value,
+  checked,
   onChange,
-  options = [
-    { value: "email", label: "Email" },
-    { value: "in-app", label: "In-App" },
-    { value: "both", label: "Both" },
-    { value: "off", label: "Off" },
-  ],
 }: {
   title: string;
   description: string;
-  value: string;
-  onChange: (v: string) => void;
-  options?: Array<{ value: string; label: string }>;
+  checked: boolean;
+  onChange: (v: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -319,15 +316,21 @@ function PrefRow({
         <p className="font-medium text-sm">{title}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
-      <select
-        className="border rounded-md px-2 py-1.5 text-sm bg-background w-32"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          checked ? "bg-primary" : "bg-muted"
+        }`}
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
     </div>
   );
 }

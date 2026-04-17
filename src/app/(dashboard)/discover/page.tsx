@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SearchBar } from "@/components/discover/SearchBar";
 import { FilterPanel } from "@/components/discover/FilterPanel";
 import { ProfessorCard } from "@/components/discover/ProfessorCard";
@@ -16,69 +16,44 @@ interface Filters {
   lookingForStudents?: boolean;
 }
 
-// Demo data for initial render
-const demoProfessors = [
-  {
-    id: "1",
-    name: "Dr. Xiang Li",
-    title: "Assistant Professor",
-    department: "Computer Science",
-    universityName: "George Mason University",
-    researchAreas: ["Trustworthy AI", "Neural Network Verification", "Formal Methods"],
-    hIndex: 28,
-    hasActiveFunding: true,
-    lookingForStudents: true,
-    overallMatchScore: 94,
-    fundingScore: 88,
-  },
-  {
-    id: "2",
-    name: "Dr. Sarah Chen",
-    title: "Associate Professor",
-    department: "Computer Science",
-    universityName: "UT Arlington",
-    researchAreas: ["Adversarial Robustness", "Deep Learning", "Computer Vision"],
-    hIndex: 42,
-    hasActiveFunding: false,
-    lookingForStudents: true,
-    overallMatchScore: 87,
-    fundingScore: 45,
-  },
-  {
-    id: "3",
-    name: "Dr. Wei Zhang",
-    title: "Assistant Professor",
-    department: "Electrical & Computer Engineering",
-    universityName: "Texas Tech University",
-    researchAreas: ["AI Safety", "Reinforcement Learning", "Robotics"],
-    hIndex: 19,
-    hasActiveFunding: true,
-    lookingForStudents: false,
-    overallMatchScore: 82,
-    fundingScore: 76,
-  },
-  {
-    id: "4",
-    name: "Dr. Maria Rodriguez",
-    title: "Professor",
-    department: "Computer Science",
-    universityName: "University of Michigan",
-    researchAreas: ["Machine Learning", "Trustworthy AI", "Fairness"],
-    hIndex: 65,
-    hasActiveFunding: true,
-    lookingForStudents: true,
-    overallMatchScore: 79,
-    fundingScore: 92,
-  },
-];
+interface Professor {
+  id: string;
+  name: string;
+  title: string | null;
+  department: string | null;
+  universityName: string;
+  researchAreas: string[];
+  hIndex: number | null;
+  hasActiveFunding: boolean;
+  lookingForStudents: boolean;
+  overallMatchScore: number;
+  fundingScore: number | null;
+}
 
 export default function DiscoverPage() {
-  const [professors, setProfessors] = useState(demoProfessors);
+  const [professors, setProfessors] = useState<Professor[]>([]);
   const [filters, setFilters] = useState<Filters>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searched, setSearched] = useState(false);
   const [semanticMode, setSemanticMode] = useState(false);
   const [semanticError, setSemanticError] = useState<string | null>(null);
+
+  // Load real professors on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/search/professors?pageSize=20");
+        if (res.ok) {
+          const json = await res.json();
+          setProfessors(json.data ?? []);
+        }
+      } catch {
+        // empty initial state on error
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const handleSearch = async (query: string) => {
     setLoading(true);
@@ -93,9 +68,9 @@ export default function DiscoverPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          const mapped = (data.results ?? []).map((r: Record<string, unknown>) => ({
+          const mapped = (data.results ?? []).map((r: Professor & { semanticScore?: number }) => ({
             ...r,
-            overallMatchScore: Math.round(((r.semanticScore as number) ?? 0) * 100),
+            overallMatchScore: Math.round((r.semanticScore ?? 0) * 100),
           }));
           setProfessors(mapped);
         } else {
