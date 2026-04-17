@@ -45,15 +45,16 @@ export async function POST(
       throw new ExternalAPIError("Resend", err instanceof Error ? err : new Error(String(err)));
     }
 
-    const updated = await prisma.outreachEmail.update({
-      where: { id },
-      data: { sentAt: new Date() },
-    });
-
-    await prisma.savedProfessor.updateMany({
-      where: { userId: user.id, professorId: email.professorId },
-      data: { status: "EMAIL_SENT" },
-    });
+    const [updated] = await prisma.$transaction([
+      prisma.outreachEmail.update({
+        where: { id },
+        data: { sentAt: new Date() },
+      }),
+      prisma.savedProfessor.updateMany({
+        where: { userId: user.id, professorId: email.professorId },
+        data: { status: "EMAIL_SENT" },
+      }),
+    ]);
 
     await auditLog(user.id, "EMAIL_SENT", { emailId: id, professorId: email.professorId });
 

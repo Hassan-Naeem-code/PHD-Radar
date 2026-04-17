@@ -65,6 +65,8 @@ export default function PrivacyPage() {
         <ul>
           <li><strong>Service providers:</strong> Supabase (database), Stripe (payments), Resend (emails), Vercel (hosting), Sentry (error tracking)</li>
           <li><strong>AI providers:</strong> Anthropic (Claude API) — your research profile is sent for matching/email generation. See Anthropic&apos;s privacy policy.</li>
+          <li><strong>AI providers:</strong> OpenAI — research text is sent to generate semantic embeddings for vector search. Only text content is sent, not personal identifiers. See OpenAI&apos;s data usage policy.</li>
+          <li><strong>Vector storage:</strong> Pinecone — semantic vectors (numerical representations of research text, not raw text) are stored for search functionality. See Pinecone&apos;s privacy policy.</li>
           <li><strong>Legal requirements:</strong> If required by law or legal process.</li>
         </ul>
 
@@ -74,7 +76,7 @@ export default function PrivacyPage() {
           <li><strong>Rectification:</strong> Update your profile at any time</li>
           <li><strong>Erasure:</strong> Delete your account and all data from Settings &gt; Delete Account</li>
           <li><strong>Portability:</strong> Download your data in CSV/JSON format</li>
-          <li><strong>Objection:</strong> Opt out of marketing emails at any time</li>
+          <li><strong>Objection:</strong> Opt out of marketing emails at any time via Settings &gt; Email Preferences or the one-click unsubscribe link in any email</li>
         </ul>
 
         <h2>7. Data Retention</h2>

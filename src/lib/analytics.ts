@@ -8,6 +8,9 @@ export function initPostHog() {
     !initialized &&
     process.env.NEXT_PUBLIC_POSTHOG_KEY
   ) {
+    const consent = localStorage.getItem("phdradar-cookie-consent");
+    if (consent !== "accepted") return;
+
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
       api_host: "https://app.posthog.com",
       loaded: (ph) => {

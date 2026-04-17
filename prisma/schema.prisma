@@ -47,6 +47,10 @@ model User {
   totpSecret           String?
   backupCodes          String[]
 
+  emailDigest          Boolean  @default(true)
+  emailReminders       Boolean  @default(true)
+  emailAlerts          Boolean  @default(true)
+
   searches          Search[]
   savedProfessors   SavedProfessor[]
   outreachEmails    OutreachEmail[]
@@ -123,7 +127,7 @@ model Professor {
   phone               String?
   title               String?
   department          String?
-  university          University @relation(fields: [universityId], references: [id])
+  university          University @relation(fields: [universityId], references: [id], onDelete: Cascade)
   universityId        String
   personalWebsite     String?
   googleScholarUrl    String?
@@ -230,7 +234,7 @@ model Publication {
 
   embeddingId     String?
 
-  professor       Professor @relation(fields: [professorId], references: [id])
+  professor       Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
   professorId     String
 
   createdAt       DateTime  @default(now())
@@ -250,7 +254,7 @@ model FundingGrant {
   status          String?
   sourceUrl       String?
 
-  professor       Professor @relation(fields: [professorId], references: [id])
+  professor       Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
   professorId     String
 
   createdAt       DateTime  @default(now())
@@ -265,7 +269,7 @@ model Search {
   filters         Json?
   resultCount     Int       @default(0)
 
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String
 
   createdAt       DateTime  @default(now())
@@ -281,9 +285,9 @@ model SavedProfessor {
   researchFitScore Float?
   researchFitNotes String?  @db.Text
 
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String
-  professor       Professor @relation(fields: [professorId], references: [id])
+  professor       Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
   professorId     String
 
   createdAt       DateTime  @default(now())
@@ -324,9 +328,9 @@ model OutreachEmail {
   responseDate    DateTime?
   responseSummary String?   @db.Text
 
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String
-  professor       Professor @relation(fields: [professorId], references: [id])
+  professor       Professor @relation(fields: [professorId], references: [id], onDelete: Cascade)
   professorId     String
 
   createdAt       DateTime  @default(now())
@@ -364,7 +368,7 @@ model Application {
   recsReceived    Int       @default(0)
   toeflSent       Boolean   @default(false)
 
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String
 
   createdAt       DateTime  @default(now())
@@ -394,7 +398,7 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
 
-  user        User      @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      String
 
   createdAt   DateTime  @default(now())
@@ -434,7 +438,7 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   actionUrl String?
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   createdAt DateTime @default(now())
 

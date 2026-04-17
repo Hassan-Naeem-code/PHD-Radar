@@ -1,21 +1,31 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiResponse, apiError } from "@/lib/errors";
+import { apiResponse, apiError, paginatedResponse } from "@/lib/errors";
 import { outreachEmailSchema } from "@/utils/validation";
 import { requireAuth, auditLog } from "@/lib/api-auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
     const userId = user.id;
+    const url = new URL(req.url);
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") || "50")));
 
-    const emails = await prisma.outreachEmail.findMany({
-      where: { userId },
-      include: { professor: { select: { name: true, university: { select: { shortName: true } } } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const where = { userId };
 
-    return apiResponse(emails);
+    const [emails, total] = await Promise.all([
+      prisma.outreachEmail.findMany({
+        where,
+        include: { professor: { select: { name: true, university: { select: { shortName: true } } } } },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.outreachEmail.count({ where }),
+    ]);
+
+    return paginatedResponse(emails, page, pageSize, total);
   } catch (error) {
     if (error instanceof Error) return apiError(error);
     return apiError(new Error("Internal server error"));

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiResponse, apiError, ValidationError } from "@/lib/errors";
+import { apiResponse, apiError, ValidationError, paginatedResponse } from "@/lib/errors";
 import { savedProfessorSchema } from "@/utils/validation";
 import { requireAuth, auditLog } from "@/lib/api-auth";
 
@@ -10,22 +10,31 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const status = url.searchParams.get("status") ?? undefined;
     const priority = url.searchParams.get("priority") ?? undefined;
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") || "50")));
 
-    const saved = await prisma.savedProfessor.findMany({
-      where: {
-        userId: user.id,
-        ...(status ? { status: status as never } : {}),
-        ...(priority ? { priority: priority as never } : {}),
-      },
-      include: {
-        professor: {
-          include: { university: { select: { name: true, shortName: true } } },
+    const where = {
+      userId: user.id,
+      ...(status ? { status: status as never } : {}),
+      ...(priority ? { priority: priority as never } : {}),
+    };
+
+    const [saved, total] = await Promise.all([
+      prisma.savedProfessor.findMany({
+        where,
+        include: {
+          professor: {
+            include: { university: { select: { name: true, shortName: true } } },
+          },
         },
-      },
-      orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
-    });
+        orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.savedProfessor.count({ where }),
+    ]);
 
-    return apiResponse(saved);
+    return paginatedResponse(saved, page, pageSize, total);
   } catch (error) {
     if (error instanceof Error) return apiError(error);
     return apiError(new Error("Internal server error"));

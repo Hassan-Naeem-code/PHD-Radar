@@ -9,8 +9,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import { EmptyState } from "@/components/EmptyState";
 import {
-  Search, Mail, Star, ExternalLink, Filter, Loader2, Trash2,
+  Search, Mail, Star, ExternalLink, Filter, Loader2, Trash2, Users,
 } from "lucide-react";
 
 const OUTREACH_STATUS_LABELS: Record<string, string> = {
@@ -170,14 +171,12 @@ export default function ProfessorsPage() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center space-y-3">
-            <p className="text-muted-foreground">You haven&apos;t saved any professors yet.</p>
-            <Link href="/discover">
-              <Button><Search className="h-4 w-4 mr-2" /> Discover Professors</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Users}
+          title="No saved professors"
+          description="You haven't saved any professors yet."
+          action={{ label: "Discover Professors", href: "/discover" }}
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map((s) => (
@@ -240,11 +239,11 @@ export default function ProfessorsPage() {
             </Card>
           ))}
           {filtered.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">No professors match your filters.</p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={Filter}
+              title="No matches"
+              description="No professors match your filters."
+            />
           )}
         </div>
       )}

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
+import { EmptyState } from "@/components/EmptyState";
 import {
-  Mail, Copy, Clock, CheckCircle, Loader2, Trash2, Send,
+  Mail, Copy, Clock, CheckCircle, Loader2, Trash2, Send, Inbox,
 } from "lucide-react";
 
 interface OutreachEmail {
@@ -171,11 +172,11 @@ export default function OutreachPage() {
         );
       })}
       {list.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">No emails in this category.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Inbox}
+          title="No emails here"
+          description="No emails in this category."
+        />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Resend } from "resend";
 
 let _resend: Resend | null = null;
@@ -10,6 +11,26 @@ function getResend(): Resend {
 }
 
 const FROM = process.env.EMAIL_FROM || "PhDRadar <notifications@phdradar.com>";
+
+function unsubscribeHeaders(userId: string, type: "digest" | "reminders" | "alerts") {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) return {};
+
+  const token = crypto
+    .createHmac("sha256", secret)
+    .update(`${userId}:${type}`)
+    .digest("hex");
+
+  const base = process.env.NEXTAUTH_URL ?? "https://phdradar.com";
+  const url = `${base}/api/unsubscribe?uid=${userId}&type=${type}&token=${token}`;
+
+  return {
+    headers: {
+      "List-Unsubscribe": `<${url}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  };
+}
 
 export async function sendWelcomeEmail(to: string, name: string) {
   return getResend().emails.send({
@@ -34,7 +55,8 @@ export async function sendFollowUpReminder(
   userName: string,
   professorName: string,
   university: string,
-  composeUrl: string
+  composeUrl: string,
+  userId: string
 ) {
   return getResend().emails.send({
     from: FROM,
@@ -44,7 +66,9 @@ export async function sendFollowUpReminder(
 <p>It's been 14 days since you emailed <strong>${professorName}</strong> at ${university}.</p>
 <p>Professors are busy — a polite follow-up can make the difference.</p>
 <p><a href="https://phdradar.com${composeUrl}" style="display:inline-block;padding:10px 20px;background:#4361ee;color:white;border-radius:6px;text-decoration:none">Draft Follow-up Email</a></p>
+<p style="margin-top:24px;font-size:12px;color:#888">You can manage email preferences in <a href="https://phdradar.com/settings">Settings</a>.</p>
 <p>— PhDRadar</p>`,
+    ...unsubscribeHeaders(userId, "reminders"),
   });
 }
 
@@ -54,7 +78,8 @@ export async function sendDeadlineAlert(
   universityName: string,
   program: string,
   daysLeft: number,
-  appUrl: string
+  appUrl: string,
+  userId: string
 ) {
   return getResend().emails.send({
     from: FROM,
@@ -63,7 +88,9 @@ export async function sendDeadlineAlert(
     html: `<h2>Deadline approaching, ${userName}</h2>
 <p>Your <strong>${program}</strong> application to <strong>${universityName}</strong> is due in <strong>${daysLeft} day${daysLeft !== 1 ? "s" : ""}</strong>.</p>
 <p><a href="https://phdradar.com${appUrl}" style="display:inline-block;padding:10px 20px;background:#4361ee;color:white;border-radius:6px;text-decoration:none">Check Application Status</a></p>
+<p style="margin-top:24px;font-size:12px;color:#888">You can manage email preferences in <a href="https://phdradar.com/settings">Settings</a>.</p>
 <p>— PhDRadar</p>`,
+    ...unsubscribeHeaders(userId, "alerts"),
   });
 }
 
@@ -107,7 +134,8 @@ export async function sendVerifyEmail(
 export async function sendWeeklyDigest(
   to: string,
   userName: string,
-  newMatches: { name: string; university: string; score: number }[]
+  newMatches: { name: string; university: string; score: number }[],
+  userId: string
 ) {
   const matchList = newMatches
     .map((m) => `<li><strong>${m.name}</strong> at ${m.university} — Score: ${m.score}/100</li>`)
@@ -121,6 +149,8 @@ export async function sendWeeklyDigest(
 <p>We found ${newMatches.length} new professors that match your research interests:</p>
 <ul>${matchList}</ul>
 <p><a href="https://phdradar.com/discover" style="display:inline-block;padding:10px 20px;background:#4361ee;color:white;border-radius:6px;text-decoration:none">Explore Matches</a></p>
+<p style="margin-top:24px;font-size:12px;color:#888">You can manage email preferences in <a href="https://phdradar.com/settings">Settings</a>.</p>
 <p>— PhDRadar</p>`,
+    ...unsubscribeHeaders(userId, "digest"),
   });
 }

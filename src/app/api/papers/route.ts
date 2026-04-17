@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { apiResponse, apiError } from "@/lib/errors";
+import { apiError, paginatedResponse } from "@/lib/errors";
 import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const savedOnly = url.searchParams.get("savedOnly") !== "false";
     const professorId = url.searchParams.get("professorId") ?? undefined;
-    const limit = Math.min(200, parseInt(url.searchParams.get("limit") || "50"));
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const pageSize = Math.min(200, Math.max(1, parseInt(url.searchParams.get("pageSize") || "50")));
 
     let professorIds: string[] | undefined;
     if (savedOnly && !professorId) {
@@ -19,29 +20,35 @@ export async function GET(req: NextRequest) {
       });
       professorIds = saved.map((s) => s.professorId);
       if (professorIds.length === 0) {
-        return apiResponse([]);
+        return paginatedResponse([], page, pageSize, 0);
       }
     }
 
-    const publications = await prisma.publication.findMany({
-      where: {
-        ...(professorId ? { professorId } : {}),
-        ...(professorIds ? { professorId: { in: professorIds } } : {}),
-      },
-      orderBy: [{ year: "desc" }, { citationCount: "desc" }],
-      take: limit,
-      include: {
-        professor: {
-          select: {
-            id: true,
-            name: true,
-            university: { select: { shortName: true, name: true } },
+    const where = {
+      ...(professorId ? { professorId } : {}),
+      ...(professorIds ? { professorId: { in: professorIds } } : {}),
+    };
+
+    const [publications, total] = await Promise.all([
+      prisma.publication.findMany({
+        where,
+        orderBy: [{ year: "desc" }, { citationCount: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          professor: {
+            select: {
+              id: true,
+              name: true,
+              university: { select: { shortName: true, name: true } },
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.publication.count({ where }),
+    ]);
 
-    return apiResponse(publications);
+    return paginatedResponse(publications, page, pageSize, total);
   } catch (error) {
     if (error instanceof Error) return apiError(error);
     return apiError(new Error("Internal server error"));

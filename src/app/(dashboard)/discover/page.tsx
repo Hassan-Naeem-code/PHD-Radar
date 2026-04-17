@@ -4,8 +4,10 @@ import { useState } from "react";
 import { SearchBar } from "@/components/discover/SearchBar";
 import { FilterPanel } from "@/components/discover/FilterPanel";
 import { ProfessorCard } from "@/components/discover/ProfessorCard";
+import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Sparkles } from "lucide-react";
 
 interface Filters {
   fundingRequired?: boolean;
@@ -75,18 +77,42 @@ export default function DiscoverPage() {
   const [filters, setFilters] = useState<Filters>({});
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [semanticMode, setSemanticMode] = useState(false);
+  const [semanticError, setSemanticError] = useState<string | null>(null);
 
   const handleSearch = async (query: string) => {
     setLoading(true);
     setSearched(true);
+    setSemanticError(null);
     try {
-      const params = new URLSearchParams({ query, ...Object.fromEntries(
-        Object.entries(filters).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
-      )});
-      const res = await fetch(`/api/search/professors?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data?.length) setProfessors(data.data);
+      if (semanticMode) {
+        const res = await fetch("/api/search/semantic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, topK: 20 }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = (data.results ?? []).map((r: Record<string, unknown>) => ({
+            ...r,
+            overallMatchScore: Math.round(((r.semanticScore as number) ?? 0) * 100),
+          }));
+          setProfessors(mapped);
+        } else {
+          const err = await res.json().catch(() => null);
+          setSemanticError(err?.error?.message ?? "Semantic search unavailable");
+          setProfessors([]);
+        }
+      } else {
+        const params = new URLSearchParams({ query, ...Object.fromEntries(
+          Object.entries(filters).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+        )});
+        const res = await fetch(`/api/search/professors?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data?.length) setProfessors(data.data);
+          else setProfessors([]);
+        }
       }
     } catch {
       // Keep demo data on error
@@ -104,8 +130,45 @@ export default function DiscoverPage() {
         </p>
       </div>
 
-      <SearchBar onSearch={handleSearch} loading={loading} />
-      <FilterPanel filters={filters} onFiltersChange={setFilters} />
+      <div className="flex items-center gap-6">
+        <div className="flex-1">
+          <SearchBar onSearch={handleSearch} loading={loading} />
+        </div>
+        <button
+          type="button"
+          onClick={() => setSemanticMode(!semanticMode)}
+          className="flex items-center gap-2 shrink-0"
+        >
+          <div
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              semanticMode ? "bg-primary" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                semanticMode ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </div>
+          <span className="text-sm font-medium flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5" />
+            AI Search
+          </span>
+          {semanticMode && (
+            <Badge variant="secondary" className="text-xs">Vector</Badge>
+          )}
+        </button>
+      </div>
+
+      {!semanticMode && <FilterPanel filters={filters} onFiltersChange={setFilters} />}
+
+      {semanticError && (
+        <Card>
+          <CardContent className="py-4 text-center text-sm text-muted-foreground">
+            {semanticError}
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="grid md:grid-cols-2 gap-4">
@@ -132,15 +195,11 @@ export default function DiscoverPage() {
           ))}
         </div>
       ) : searched ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold text-lg">No professors found</h3>
-            <p className="text-muted-foreground mt-1">
-              Try adjusting your search terms or filters.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Search}
+          title="No professors found"
+          description="Try adjusting your search terms or filters."
+        />
       ) : null}
     </div>
   );

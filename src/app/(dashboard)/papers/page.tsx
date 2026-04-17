@@ -5,8 +5,9 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/EmptyState";
 import {
-  Sparkles, ChevronDown, ChevronUp, Loader2, ExternalLink, Search,
+  Sparkles, ChevronDown, ChevronUp, Loader2, ExternalLink, FileText,
 } from "lucide-react";
 
 interface Paper {
@@ -90,16 +91,12 @@ export default function PapersPage() {
       </div>
 
       {papers.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center space-y-3">
-            <p className="text-muted-foreground">
-              No papers yet — save some professors to see their publications here.
-            </p>
-            <Link href="/discover">
-              <Button><Search className="h-4 w-4 mr-2" /> Discover Professors</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="No papers yet"
+          description="Save some professors to see their publications here."
+          action={{ label: "Discover Professors", href: "/discover" }}
+        />
       ) : (
         <div className="space-y-4">
           {papers.map((paper) => (

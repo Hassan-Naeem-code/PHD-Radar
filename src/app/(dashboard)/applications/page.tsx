@@ -13,8 +13,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { EmptyState } from "@/components/EmptyState";
 import {
-  Plus, Calendar, CheckCircle, Circle, Loader2, Trash2,
+  Plus, Calendar, CheckCircle, Circle, Loader2, Trash2, GraduationCap,
 } from "lucide-react";
 
 const STATUS_COLUMNS = [
@@ -187,14 +188,12 @@ export default function ApplicationsPage() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : apps.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center space-y-3">
-            <p className="text-muted-foreground">No applications yet.</p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Add your first application
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={GraduationCap}
+          title="No applications yet"
+          description="Start tracking your PhD applications and deadlines."
+          action={{ label: "Add your first application", onClick: () => setDialogOpen(true) }}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto">
           {STATUS_COLUMNS.map((col) => {
