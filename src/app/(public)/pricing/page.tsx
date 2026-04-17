@@ -1,10 +1,27 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Radar } from "lucide-react";
+import { CheckCircle, Radar, Loader2 } from "lucide-react";
 
-const plans = [
+type PlanKey = "FREE" | "PRO" | "PREMIUM";
+
+const plans: Array<{
+  key: PlanKey;
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  cta: string;
+  popular: boolean;
+}> = [
   {
+    key: "FREE",
     name: "Free",
     price: "$0",
     period: "forever",
@@ -19,6 +36,7 @@ const plans = [
     popular: false,
   },
   {
+    key: "PRO",
     name: "Pro",
     price: "$19",
     period: "/month",
@@ -36,6 +54,7 @@ const plans = [
     popular: true,
   },
   {
+    key: "PREMIUM",
     name: "Premium",
     price: "$49",
     period: "/month",
@@ -55,6 +74,41 @@ const plans = [
 ];
 
 export default function PricingPage() {
+  const { status } = useSession();
+  const router = useRouter();
+  const [loadingPlan, setLoadingPlan] = useState<PlanKey | null>(null);
+
+  async function subscribe(plan: PlanKey) {
+    if (plan === "FREE") {
+      router.push(status === "authenticated" ? "/dashboard" : "/signup");
+      return;
+    }
+
+    if (status !== "authenticated") {
+      router.push(`/signup?next=/pricing`);
+      return;
+    }
+
+    setLoadingPlan(plan);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+      const json = await res.json();
+      if (json.success && json.data?.url) {
+        window.location.assign(json.data.url);
+      } else {
+        alert(json.error?.message ?? "Checkout failed");
+        setLoadingPlan(null);
+      }
+    } catch {
+      setLoadingPlan(null);
+      alert("Checkout failed — please try again");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
@@ -85,44 +139,48 @@ export default function PricingPage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {plans.map((plan) => (
-            <Card
-              key={plan.name}
-              className={`relative ${plan.popular ? "border-primary shadow-lg scale-105" : ""}`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-white text-xs font-medium px-3 py-1 rounded-full">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-              <CardContent className="pt-8 pb-6">
-                <h3 className="text-lg font-semibold">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground">{plan.description}</p>
-                <div className="mt-4 flex items-baseline">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground ml-1">{plan.period}</span>
-                </div>
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/signup" className="block mt-8">
+          {plans.map((plan) => {
+            const isLoading = loadingPlan === plan.key;
+            return (
+              <Card
+                key={plan.key}
+                className={`relative ${plan.popular ? "border-primary shadow-lg scale-105" : ""}`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-primary text-white text-xs font-medium px-3 py-1 rounded-full">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+                <CardContent className="pt-8 pb-6">
+                  <h3 className="text-lg font-semibold">{plan.name}</h3>
+                  <p className="text-sm text-muted-foreground">{plan.description}</p>
+                  <div className="mt-4 flex items-baseline">
+                    <span className="text-4xl font-bold">{plan.price}</span>
+                    <span className="text-muted-foreground ml-1">{plan.period}</span>
+                  </div>
+                  <ul className="mt-6 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                   <Button
-                    className="w-full"
+                    className="w-full mt-8"
                     variant={plan.popular ? "default" : "outline"}
+                    disabled={isLoading}
+                    onClick={() => subscribe(plan.key)}
                   >
+                    {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {plan.cta}
                   </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>

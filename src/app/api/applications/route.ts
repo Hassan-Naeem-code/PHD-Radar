@@ -4,7 +4,7 @@ import { apiResponse, apiError } from "@/lib/errors";
 import { applicationSchema } from "@/utils/validation";
 import { requireAuth } from "@/lib/api-auth";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const user = await requireAuth();
     const userId = user.id;

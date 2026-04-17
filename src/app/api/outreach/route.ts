@@ -4,7 +4,7 @@ import { apiResponse, apiError } from "@/lib/errors";
 import { outreachEmailSchema } from "@/utils/validation";
 import { requireAuth, auditLog } from "@/lib/api-auth";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const user = await requireAuth();
     const userId = user.id;

@@ -1,29 +1,34 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 import { apiResponse, apiError } from "@/lib/errors";
 import { requireAdmin, auditLog } from "@/lib/api-auth";
+import { runScrapingJob, SCRAPE_SOURCES, type ScrapeSource } from "@/services/scraper/runner";
+
+const bodySchema = z.object({
+  source: z.enum(SCRAPE_SOURCES as [ScrapeSource, ...ScrapeSource[]]).optional(),
+  keyword: z.string().min(2).max(100).optional(),
+  affiliation: z.string().min(2).max(200).optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAdmin();
-    const url = new URL(req.url);
-    const source = url.searchParams.get("source") || "scholar";
+    const body = await req.json().catch(() => ({}));
+    const { source = "semantic_scholar", keyword, affiliation } = bodySchema.parse(body);
 
-    const job = await prisma.scrapingJob.create({
-      data: {
-        source,
-        status: "PENDING",
-      },
+    const result = await runScrapingJob(source, { keyword, affiliation });
+
+    await auditLog(user.id, "SCRAPING_TRIGGERED", {
+      source,
+      keyword,
+      affiliation,
+      jobId: result.jobId,
+      status: result.status,
     });
 
-    // In production, this would trigger an Inngest/BullMQ job
-    // For now, just create the job record
-
-    await auditLog(user.id, "SCRAPING_TRIGGERED", { source, jobId: job.id });
-
-    return apiResponse({ jobId: job.id, status: "PENDING" });
+    return apiResponse(result);
   } catch (error) {
     if (error instanceof Error) return apiError(error);
-    return apiError(new Error("Internal server error"));
+    return apiError(new Error("Scraping failed"));
   }
 }

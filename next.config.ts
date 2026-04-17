@@ -1,4 +1,11 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
+
+const isDev = process.env.NODE_ENV === "development";
+
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.posthog.com"
+  : "script-src 'self' 'unsafe-inline' https://app.posthog.com";
 
 const securityHeaders = [
   {
@@ -29,7 +36,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://app.posthog.com",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
@@ -44,6 +51,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  output: process.env.BUILD_STANDALONE === "true" ? "standalone" : undefined,
   async headers() {
     return [
       {
@@ -54,4 +62,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const hasSentryBuildCreds =
+  Boolean(process.env.SENTRY_ORG) &&
+  Boolean(process.env.SENTRY_PROJECT) &&
+  Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+export default hasSentryBuildCreds
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG!,
+      project: process.env.SENTRY_PROJECT!,
+      silent: true,
+      widenClientFileUpload: true,
+      disableLogger: true,
+      sourcemaps: { disable: true },
+    })
+  : nextConfig;

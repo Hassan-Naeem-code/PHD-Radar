@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/CookieConsent";
 import { PWARegister } from "@/components/PWARegister";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,9 +73,11 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <div id="main-content">{children}</div>
-        <CookieConsent />
-        <PWARegister />
+        <Providers>
+          <div id="main-content">{children}</div>
+          <CookieConsent />
+          <PWARegister />
+        </Providers>
       </body>
     </html>
   );

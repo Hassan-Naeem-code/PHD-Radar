@@ -16,6 +16,7 @@ import { Radar } from "lucide-react";
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
+  totp: z.string().optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showTotp, setShowTotp] = useState(false);
 
   const {
     register,
@@ -40,11 +42,19 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email: data.email,
       password: data.password,
+      totp: data.totp ?? "",
       redirect: false,
     });
 
     if (result?.error) {
-      setError("Invalid email or password");
+      if (showTotp) {
+        setError("Invalid email, password, or 2FA code");
+      } else {
+        setShowTotp(true);
+        setError(
+          "If 2FA is on, enter your 6-digit code (or a backup code) and try again."
+        );
+      }
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -119,7 +129,15 @@ export default function LoginPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -130,6 +148,18 @@ export default function LoginPage() {
                 <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
               )}
             </div>
+            {showTotp && (
+              <div>
+                <Label htmlFor="totp">Authentication code</Label>
+                <Input
+                  id="totp"
+                  placeholder="6-digit code or backup code"
+                  autoComplete="one-time-code"
+                  inputMode="text"
+                  {...register("totp")}
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>

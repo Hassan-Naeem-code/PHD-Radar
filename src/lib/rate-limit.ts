@@ -4,6 +4,19 @@ import { getRedis } from "./redis";
 let _searchLimiter: Ratelimit | null = null;
 let _apiLimiter: Ratelimit | null = null;
 let _aiLimiter: Ratelimit | null = null;
+let _authLimiter: Ratelimit | null = null;
+
+export function getAuthLimiter(): Ratelimit {
+  if (!_authLimiter) {
+    _authLimiter = new Ratelimit({
+      redis: getRedis(),
+      limiter: Ratelimit.slidingWindow(5, "15 m"),
+      analytics: true,
+      prefix: "ratelimit:auth",
+    });
+  }
+  return _authLimiter;
+}
 
 export function getSearchLimiter(): Ratelimit {
   if (!_searchLimiter) {

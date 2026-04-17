@@ -159,7 +159,8 @@ async function main() {
 
     if (!university) continue;
 
-    const { universityShortName, labName, ...profData } = prof;
+    const { universityShortName: _unused, labName, ...profData } = prof;
+    void _unused;
 
     await prisma.professor.create({
       data: {

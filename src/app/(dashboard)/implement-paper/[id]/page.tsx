@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
   BookOpen, Code, GitBranch, CheckCircle, Circle,
-  ExternalLink, Sparkles, Clock, Gauge, Share2,
+  Sparkles, Clock, Gauge, Share2,
 } from "lucide-react";
 import Link from "next/link";
 

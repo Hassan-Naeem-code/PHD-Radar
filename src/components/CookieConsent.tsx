@@ -1,27 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export function CookieConsent() {
-  const [visible, setVisible] = useState(false);
+const CONSENT_KEY = "phdradar-cookie-consent";
 
-  useEffect(() => {
-    const consent = localStorage.getItem("phdradar-cookie-consent");
-    if (!consent) {
-      setVisible(true);
-    }
-  }, []);
+function subscribeToStorage(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
+}
+
+function readConsent() {
+  if (typeof window === "undefined") return "pending";
+  return localStorage.getItem(CONSENT_KEY) ?? "pending";
+}
+
+export function CookieConsent() {
+  const consent = useSyncExternalStore(
+    subscribeToStorage,
+    readConsent,
+    () => "pending"
+  );
+  const [dismissed, setDismissed] = useState(false);
+  const visible = consent === "pending" && !dismissed;
 
   const accept = () => {
-    localStorage.setItem("phdradar-cookie-consent", "accepted");
-    setVisible(false);
+    localStorage.setItem(CONSENT_KEY, "accepted");
+    setDismissed(true);
   };
 
   const decline = () => {
-    localStorage.setItem("phdradar-cookie-consent", "declined");
-    setVisible(false);
+    localStorage.setItem(CONSENT_KEY, "declined");
+    setDismissed(true);
   };
 
   if (!visible) return null;

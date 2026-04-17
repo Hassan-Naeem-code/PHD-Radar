@@ -1,54 +1,34 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { Mail, Copy, Clock, CheckCircle, XCircle } from "lucide-react";
+import {
+  Mail, Copy, Clock, CheckCircle, Loader2, Trash2, Send,
+} from "lucide-react";
 
-const emails = [
-  {
-    id: "e1",
-    professorName: "Dr. Xiang Li",
-    university: "GMU",
-    subject: "Prospective PhD Student — Neural Network Verification Research",
-    type: "COLD_OUTREACH",
-    sentAt: "2026-04-08",
-    responseReceived: false,
-    status: "sent",
-  },
-  {
-    id: "e2",
-    professorName: "Dr. Sarah Chen",
-    university: "UTA",
-    subject: "Interest in Adversarial Robustness Research",
-    type: "COLD_OUTREACH",
-    sentAt: null,
-    responseReceived: false,
-    status: "draft",
-  },
-  {
-    id: "e3",
-    professorName: "Dr. Maria Rodriguez",
-    university: "UMich",
-    subject: "Re: PhD Opportunities in Trustworthy AI",
-    type: "COLD_OUTREACH",
-    sentAt: "2026-03-25",
-    responseReceived: true,
-    status: "responded",
-  },
-  {
-    id: "e4",
-    professorName: "Dr. James Park",
-    university: "Virginia Tech",
-    subject: "Following up — PhD Research Opportunity",
-    type: "FOLLOW_UP",
-    sentAt: "2026-04-01",
-    responseReceived: false,
-    status: "sent",
-  },
-];
+interface OutreachEmail {
+  id: string;
+  subject: string;
+  body: string;
+  type: string;
+  sentAt: string | null;
+  responseReceived: boolean;
+  professorId: string;
+  professor: {
+    name: string;
+    university: { shortName: string | null };
+  };
+}
+
+function categorize(e: OutreachEmail): "draft" | "sent" | "responded" {
+  if (e.responseReceived) return "responded";
+  if (e.sentAt) return "sent";
+  return "draft";
+}
 
 const statusIcon = {
   draft: <Clock className="h-4 w-4 text-yellow-500" />,
@@ -57,46 +37,139 @@ const statusIcon = {
 };
 
 export default function OutreachPage() {
-  const drafts = emails.filter((e) => e.status === "draft");
-  const sent = emails.filter((e) => e.status === "sent");
-  const responded = emails.filter((e) => e.status === "responded");
+  const [emails, setEmails] = useState<OutreachEmail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
-  const renderEmailList = (list: typeof emails) => (
+  async function load() {
+    try {
+      const res = await fetch("/api/outreach");
+      const json = await res.json();
+      if (json.success) setEmails(json.data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function sendEmail(id: string) {
+    if (!confirm("Send this email to the professor? This cannot be undone.")) return;
+    setSendingId(id);
+    try {
+      const res = await fetch(`/api/outreach/${id}/send`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        await load();
+      } else {
+        alert(json.error?.message ?? "Send failed");
+      }
+    } finally {
+      setSendingId(null);
+    }
+  }
+
+  async function deleteEmail(id: string) {
+    if (!confirm("Delete this email?")) return;
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+    await fetch(`/api/outreach/${id}`, { method: "DELETE" });
+  }
+
+  async function copyEmail(email: OutreachEmail) {
+    await navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`);
+  }
+
+  async function markResponded(id: string) {
+    setEmails((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, responseReceived: true } : e
+      )
+    );
+    await fetch(`/api/outreach/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ responseReceived: true, responseDate: new Date().toISOString() }),
+    });
+  }
+
+  const drafts = emails.filter((e) => categorize(e) === "draft");
+  const sent = emails.filter((e) => categorize(e) === "sent");
+  const responded = emails.filter((e) => categorize(e) === "responded");
+
+  const renderEmailList = (list: OutreachEmail[]) => (
     <div className="space-y-3">
-      {list.map((email) => (
-        <Card key={email.id} className="hover:shadow-sm transition-shadow">
-          <CardContent className="py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {statusIcon[email.status as keyof typeof statusIcon]}
-                  <span className="font-medium text-sm">{email.professorName}</span>
-                  <span className="text-xs text-muted-foreground">({email.university})</span>
+      {list.map((email) => {
+        const status = categorize(email);
+        return (
+          <Card key={email.id} className="hover:shadow-sm transition-shadow">
+            <CardContent className="py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {statusIcon[status]}
+                    <span className="font-medium text-sm">{email.professor.name}</span>
+                    {email.professor.university.shortName && (
+                      <span className="text-xs text-muted-foreground">
+                        ({email.professor.university.shortName})
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm mt-1 truncate">{email.subject}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {email.type.replace(/_/g, " ")}
+                    </Badge>
+                    {email.sentAt && (
+                      <span className="text-xs text-muted-foreground">
+                        Sent: {new Date(email.sentAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm mt-1 truncate">{email.subject}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {email.type.replace("_", " ")}
-                  </Badge>
-                  {email.sentAt && (
-                    <span className="text-xs text-muted-foreground">
-                      Sent: {email.sentAt}
-                    </span>
+                <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" title="Copy email" onClick={() => copyEmail(email)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {status === "draft" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Send"
+                      onClick={() => sendEmail(email.id)}
+                      disabled={sendingId === email.id}
+                    >
+                      {sendingId === email.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Send className="h-4 w-4" />}
+                    </Button>
                   )}
+                  {status === "sent" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Mark responded"
+                      onClick={() => markResponded(email.id)}
+                    >
+                      Mark replied
+                    </Button>
+                  )}
+                  <Link href={`/outreach/compose/${email.professorId}`}>
+                    <Button variant="ghost" size="sm">Edit</Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Delete"
+                    onClick={() => deleteEmail(email.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" title="Copy email">
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Link href={`/outreach/compose/${email.id}`}>
-                  <Button variant="ghost" size="sm">Edit</Button>
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
       {list.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center">
@@ -107,6 +180,14 @@ export default function OutreachPage() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -116,7 +197,6 @@ export default function OutreachPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-4 text-center">

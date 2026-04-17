@@ -45,10 +45,12 @@ export function MobileNav() {
           <span className="text-lg font-bold">PhDRadar</span>
         </Link>
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger>
-            <Button variant="ghost" size="icon">
-              {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+          <SheetTrigger
+            render={
+              <Button variant="ghost" size="icon" aria-label="Open menu" />
+            }
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <div className="flex items-center gap-2 h-16 px-6 border-b">

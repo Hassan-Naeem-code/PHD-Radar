@@ -67,6 +67,43 @@ export async function sendDeadlineAlert(
   });
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  resetUrl: string
+) {
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Reset your PhDRadar password",
+    html: `<h2>Hi ${name},</h2>
+<p>We received a request to reset your PhDRadar password.</p>
+<p>Click the button below to choose a new password. This link expires in 1 hour.</p>
+<p><a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background:#4361ee;color:white;border-radius:6px;text-decoration:none">Reset Password</a></p>
+<p>Or copy this URL into your browser:<br><code>${resetUrl}</code></p>
+<p>If you didn&rsquo;t request this, you can safely ignore this email.</p>
+<p>— The PhDRadar Team</p>`,
+  });
+}
+
+export async function sendVerifyEmail(
+  to: string,
+  name: string,
+  verifyUrl: string
+) {
+  return getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Verify your PhDRadar email",
+    html: `<h2>Welcome, ${name}!</h2>
+<p>Please confirm this is your email address so we can keep your account secure.</p>
+<p><a href="${verifyUrl}" style="display:inline-block;padding:10px 20px;background:#4361ee;color:white;border-radius:6px;text-decoration:none">Verify Email</a></p>
+<p>Or copy this URL into your browser:<br><code>${verifyUrl}</code></p>
+<p>This link expires in 24 hours.</p>
+<p>— The PhDRadar Team</p>`,
+  });
+}
+
 export async function sendWeeklyDigest(
   to: string,
   userName: string,

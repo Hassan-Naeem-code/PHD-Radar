@@ -59,7 +59,7 @@ export async function getActiveAwards(keyword: string): Promise<NSFAward[]> {
 
   return awards.filter((award) => {
     if (!award.expDate) return false;
-    const [month, , year] = award.expDate.split("/");
+    const year = award.expDate.split("/")[2];
     return parseInt(year) >= currentYear;
   });
 }

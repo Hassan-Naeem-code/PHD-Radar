@@ -1,45 +1,112 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  Users,
-  Mail,
-  MessageSquare,
-  ClipboardList,
-  Calendar,
-  ArrowRight,
-  TrendingUp,
+  Users, Mail, MessageSquare, ClipboardList, Calendar,
+  ArrowRight, TrendingUp, Loader2,
 } from "lucide-react";
 
-const stats = [
-  { name: "Saved Professors", value: "12", icon: Users, change: "+3 this week" },
-  { name: "Emails Sent", value: "8", icon: Mail, change: "+2 this week" },
-  { name: "Responses", value: "2", icon: MessageSquare, change: "25% rate" },
-  { name: "Applications", value: "5", icon: ClipboardList, change: "2 submitted" },
-];
+interface DashboardStats {
+  stats: {
+    savedProfessors: { value: number; change: number };
+    emailsSent: { value: number; change: number };
+    responses: { value: number; rate: number };
+    applications: { value: number; submitted: number };
+  };
+  upcomingDeadlines: Array<{
+    id: string;
+    university: string;
+    program: string;
+    deadline: string | null;
+    daysLeft: number | null;
+  }>;
+  recentActivity: Array<{
+    id: string;
+    professor: string;
+    action: string;
+    status: string;
+    createdAt: string;
+  }>;
+  topMatches: Array<{
+    id: string;
+    name: string;
+    university: string;
+    funded: boolean;
+    score: number;
+  }>;
+}
 
-const deadlines = [
-  { university: "George Mason University", program: "PhD CS", deadline: "Mar 15, 2027", daysLeft: 3, urgent: true },
-  { university: "UT Arlington", program: "PhD CS", deadline: "Rolling", daysLeft: null, urgent: false },
-  { university: "Texas Tech", program: "PhD CS", deadline: "Apr 1, 2027", daysLeft: 20, urgent: false },
-];
-
-const recentActivity = [
-  { professor: "Dr. Nguyen", action: "Email sent", time: "2 days ago", status: "EMAIL_SENT" },
-  { professor: "Dr. Huang", action: "Draft ready", time: "3 days ago", status: "EMAIL_DRAFTED" },
-  { professor: "Dr. Zhu", action: "Follow-up due", time: "Overdue", status: "FOLLOW_UP_SENT" },
-];
-
-const topMatches = [
-  { name: "Dr. Xiang Li", score: 94, funded: true, university: "GMU" },
-  { name: "Dr. Sarah Chen", score: 87, funded: false, university: "UTA" },
-  { name: "Dr. Wei Zhang", score: 82, funded: true, university: "TTU" },
-];
+function formatRelative(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days === 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
 
 export default function DashboardPage() {
+  const [data, setData] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/dashboard/stats");
+        const json = await res.json();
+        if (json.success) setData(json.data);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <p className="text-muted-foreground">Unable to load dashboard.</p>;
+  }
+
+  const statCards = [
+    {
+      name: "Saved Professors",
+      value: data.stats.savedProfessors.value,
+      icon: Users,
+      change: data.stats.savedProfessors.change > 0
+        ? `+${data.stats.savedProfessors.change} this week`
+        : "No change",
+    },
+    {
+      name: "Emails Sent",
+      value: data.stats.emailsSent.value,
+      icon: Mail,
+      change: data.stats.emailsSent.change > 0
+        ? `+${data.stats.emailsSent.change} this week`
+        : "No change",
+    },
+    {
+      name: "Responses",
+      value: data.stats.responses.value,
+      icon: MessageSquare,
+      change: `${data.stats.responses.rate}% rate`,
+    },
+    {
+      name: "Applications",
+      value: data.stats.applications.value,
+      icon: ClipboardList,
+      change: `${data.stats.applications.submitted} submitted`,
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>
@@ -49,9 +116,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.name}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -67,7 +133,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Upcoming Deadlines */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">
@@ -81,28 +146,36 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {deadlines.map((d) => (
-                <div key={d.university} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">{d.university}</p>
-                    <p className="text-xs text-muted-foreground">{d.program}</p>
+            {data.upcomingDeadlines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming deadlines.</p>
+            ) : (
+              <div className="space-y-4">
+                {data.upcomingDeadlines.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{d.university}</p>
+                      <p className="text-xs text-muted-foreground">{d.program}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm">
+                        {d.deadline ? new Date(d.deadline).toLocaleDateString() : "Rolling"}
+                      </p>
+                      {d.daysLeft !== null && (
+                        <Badge
+                          variant={d.daysLeft <= 7 ? "destructive" : "secondary"}
+                          className="text-xs"
+                        >
+                          {d.daysLeft} days
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm">{d.deadline}</p>
-                    {d.daysLeft !== null && (
-                      <Badge variant={d.urgent ? "destructive" : "secondary"} className="text-xs">
-                        {d.daysLeft} days
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Recent Outreach */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">
@@ -116,21 +189,26 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((a) => (
-                <div key={a.professor} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm">{a.professor}</p>
-                    <p className="text-xs text-muted-foreground">{a.action}</p>
+            {data.recentActivity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            ) : (
+              <div className="space-y-4">
+                {data.recentActivity.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{a.professor}</p>
+                      <p className="text-xs text-muted-foreground">{a.action}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelative(a.createdAt)}
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{a.time}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Top Matched Professors */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">
@@ -144,25 +222,35 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {topMatches.map((prof, i) => (
-                <div key={prof.name} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{prof.name}</p>
-                    <p className="text-xs text-muted-foreground">{prof.university}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm">{prof.score}</p>
-                    <Badge variant={prof.funded ? "default" : "secondary"} className="text-xs">
-                      {prof.funded ? "Funded" : "Maybe"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {data.topMatches.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Save professors from Discover to see matches.
+              </p>
+            ) : (
+              <div className="grid sm:grid-cols-3 gap-4">
+                {data.topMatches.map((prof, i) => (
+                  <Link
+                    key={prof.id}
+                    href={`/professors/${prof.id}`}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{prof.name}</p>
+                      <p className="text-xs text-muted-foreground">{prof.university}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">{prof.score}</p>
+                      <Badge variant={prof.funded ? "default" : "secondary"} className="text-xs">
+                        {prof.funded ? "Funded" : "Maybe"}
+                      </Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

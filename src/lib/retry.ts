@@ -38,7 +38,6 @@ interface CircuitState {
 const circuits = new Map<string, CircuitState>();
 
 const FAILURE_THRESHOLD = 5;
-const FAILURE_WINDOW = 60_000; // 60 seconds
 const RECOVERY_TIMEOUT = 300_000; // 5 minutes
 
 export async function withCircuitBreaker<T>(

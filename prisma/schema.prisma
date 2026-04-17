@@ -38,6 +38,15 @@ model User {
   citizenCountry    String?
   onboardingCompleted Boolean @default(false)
 
+  plan                 SubscriptionPlan @default(FREE)
+  stripeCustomerId     String?          @unique
+  stripeSubscriptionId String?          @unique
+  planExpiresAt        DateTime?
+
+  twoFactorEnabled     Boolean  @default(false)
+  totpSecret           String?
+  backupCodes          String[]
+
   searches          Search[]
   savedProfessors   SavedProfessor[]
   outreachEmails    OutreachEmail[]
@@ -54,6 +63,12 @@ model User {
 enum UserRole {
   STUDENT
   ADMIN
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  PREMIUM
 }
 
 // NextAuth required models
@@ -89,6 +104,18 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expires])
+}
+
 model Professor {
   id                  String    @id @default(cuid())
   name                String
@@ -100,11 +127,19 @@ model Professor {
   universityId        String
   personalWebsite     String?
   googleScholarUrl    String?
+  googleScholarId     String?
   dblpUrl             String?
+  dblpPid             String?
   linkedinUrl         String?
   githubUrl           String?
+  githubUsername      String?
+  orcidId             String?
+  mediumUsername      String?
+  twitterHandle       String?
   labName             String?
   labWebsite          String?
+  facultyPageUrl      String?
+  lastEnrichedAt      DateTime?
 
   researchAreas       String[]
   researchSummary     String?   @db.Text

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,7 +26,6 @@ const signupSchema = z.object({
 type SignupForm = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
