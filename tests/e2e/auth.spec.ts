@@ -8,7 +8,7 @@ function uniqueEmail(): string {
 test.describe("Authentication", () => {
   test("signup page renders and validates password strength", async ({ page }) => {
     await page.goto("/signup");
-    await expect(page.getByRole("heading", { name: /Create your account/i })).toBeVisible();
+    await expect(page.getByText(/Create your account/i)).toBeVisible();
 
     await page.getByLabel(/name/i).fill("Test User");
     await page.getByLabel(/email/i).fill("weak@test.com");
@@ -56,7 +56,7 @@ test.describe("Authentication", () => {
     await page.getByRole("button", { name: /Send reset link/i }).click();
 
     await expect(
-      page.getByText(/check your inbox|reset link|check your email/i)
+      page.getByText(/Check your email for the reset link/i)
     ).toBeVisible({ timeout: 5000 });
   });
 

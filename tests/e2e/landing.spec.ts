@@ -7,8 +7,9 @@ test("landing page loads with correct title", async ({ page }) => {
 
 test("landing page has hero section", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Find your PhD advisor")).toBeVisible();
-  await expect(page.getByText("before you apply")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Find your PhD advisor before you apply/i })
+  ).toBeVisible();
 });
 
 test("navigation links work", async ({ page }) => {
