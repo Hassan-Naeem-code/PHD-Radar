@@ -9,4 +9,5 @@ export async function register() {
   }
 }
 
+
 export { captureRequestError as onRequestError } from "@sentry/nextjs";
