@@ -40,13 +40,17 @@ const statusIcon = {
 export default function OutreachPage() {
   const [emails, setEmails] = useState<OutreachEmail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
 
   async function load() {
     try {
-      const res = await fetch("/api/outreach");
+      const res = await fetch("/api/outreach?pageSize=200");
       const json = await res.json();
       if (json.success) setEmails(json.data);
+      else setError(json.error?.message ?? "Failed to load");
+    } catch {
+      setError("Failed to load outreach emails");
     } finally {
       setLoading(false);
     }
@@ -186,6 +190,12 @@ export default function OutreachPage() {
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 text-center text-sm text-destructive">{error}</div>
     );
   }
 

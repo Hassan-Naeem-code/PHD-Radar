@@ -65,15 +65,19 @@ interface SavedProfessor {
 export default function ProfessorsPage() {
   const [items, setItems] = useState<SavedProfessor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
 
   async function load() {
     try {
-      const res = await fetch("/api/saved-professors");
+      const res = await fetch("/api/saved-professors?pageSize=200");
       const json = await res.json();
       if (json.success) setItems(json.data);
+      else setError(json.error?.message ?? "Failed to load");
+    } catch {
+      setError("Failed to load saved professors");
     } finally {
       setLoading(false);
     }
@@ -166,7 +170,9 @@ export default function ProfessorsPage() {
         </div>
       )}
 
-      {loading ? (
+      {error ? (
+        <Card><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
+      ) : loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>

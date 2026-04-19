@@ -68,15 +68,19 @@ function daysUntil(date: string | null) {
 export default function ApplicationsPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ universityName: "", program: "", term: "Fall 2027", deadline: "" });
 
   async function load() {
     try {
-      const res = await fetch("/api/applications");
+      const res = await fetch("/api/applications?pageSize=200");
       const json = await res.json();
       if (json.success) setApps(json.data);
+      else setError(json.error?.message ?? "Failed to load");
+    } catch {
+      setError("Failed to load applications");
     } finally {
       setLoading(false);
     }
@@ -183,7 +187,9 @@ export default function ApplicationsPage() {
         </Dialog>
       </div>
 
-      {loading ? (
+      {error ? (
+        <Card><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
+      ) : loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>

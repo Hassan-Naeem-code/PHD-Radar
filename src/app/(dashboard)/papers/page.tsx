@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { Pagination } from "@/components/Pagination";
 import {
   Sparkles, ChevronDown, ChevronUp, Loader2, ExternalLink, FileText,
 } from "lucide-react";
@@ -31,14 +32,27 @@ interface Paper {
 export default function PapersPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [summarizingId, setSummarizingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, hasMore: false });
+  const pageSize = 50;
 
-  async function load() {
+  async function load(p = 1) {
+    setLoading(true);
     try {
-      const res = await fetch("/api/papers");
+      const res = await fetch(`/api/papers?page=${p}&pageSize=${pageSize}`);
       const json = await res.json();
-      if (json.success) setPapers(json.data);
+      if (json.success) {
+        setPapers(json.data);
+        if (json.pagination) setPagination(json.pagination);
+        setPage(p);
+      } else {
+        setError(json.error?.message ?? "Failed to load");
+      }
+    } catch {
+      setError("Failed to load papers");
     } finally {
       setLoading(false);
     }
@@ -78,6 +92,12 @@ export default function PapersPage() {
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 text-center text-sm text-destructive">{error}</div>
     );
   }
 
@@ -202,6 +222,13 @@ export default function PapersPage() {
               </CardContent>
             </Card>
           ))}
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={pagination.total}
+            hasMore={pagination.hasMore}
+            onPageChange={(p) => load(p)}
+          />
         </div>
       )}
     </div>
